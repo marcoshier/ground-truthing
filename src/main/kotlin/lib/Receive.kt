@@ -16,7 +16,7 @@ class Receiver {
 
     private val networkInterface = NetworkInterface.getNetworkInterfaces().toList().find { ni ->
         !ni.isVirtual && ni.isUp && !ni.isVirtual && ni.supportsMulticast() && ni.interfaceAddresses.find { ia ->
-            val ipStart = System.getenv("screenIP") ?: System.getProperty("screenIP") ?: "172."
+            val ipStart = "169.254.130.90"
             ia.address.hostAddress.startsWith(ipStart)
         }!= null }.also { println(it) }
 

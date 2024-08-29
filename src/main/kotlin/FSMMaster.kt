@@ -3,13 +3,16 @@ import edu.ufl.digitalworlds.j4k.Skeleton
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
 import lib.Kinect
+import org.openrndr.KEY_SPACEBAR
 import org.openrndr.application
+import org.openrndr.extra.noise.uniform
 import org.openrndr.extra.shapes.path3d.toPath3D
 import org.openrndr.math.Vector2
 import org.openrndr.shape.Path3D
 import org.openrndr.shape.ShapeContour
 import java.io.ByteArrayOutputStream
 import java.io.ObjectOutputStream
+import java.io.Serializable
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -17,17 +20,20 @@ import java.net.InetSocketAddress
 import java.util.*
 import kotlin.concurrent.thread
 
-data class Message(val i: Int, val paths: List<Path3D>)
+data class Message(val i: Int, val paths: List<List<Vector2>>): Serializable
 
 fun main() = application {
 
     program {
 
+        val test = true
+
         val orchestrator = Orchestrator()
 
         val sendChannel = Channel<Message>(10000)
-        val ipAddress = "192.168.1.1"
+        val ipAddress = "169.254.130.90"
 
+        val testPaths = listOf((0..10).map { drawer.bounds.uniform() })
 
         val positions = mutableListOf<Vector2>()
 
@@ -71,23 +77,33 @@ fun main() = application {
         }
 
         orchestrator.plotEvent.listen {
-            val groups = mutableListOf(mutableListOf<Vector2>())
-            val currentPointSet = mutableListOf<Vector2>()
+            if (!test) {
+                val groups = mutableListOf(mutableListOf<Vector2>())
+                val currentPointSet = mutableListOf<Vector2>()
 
-            for ((i, p) in positions.withIndex()) {
-                if (i != 0 && p.distanceTo(positions[i - 1]) < 5.0) {
-                    currentPointSet.add(p)
-                } else {
-                    groups.add(currentPointSet)
-                    currentPointSet.clear()
+                for ((i, p) in positions.withIndex()) {
+                    if (i != 0 && p.distanceTo(positions[i - 1]) < 5.0) {
+                        currentPointSet.add(p)
+                    } else {
+                        groups.add(currentPointSet)
+                        currentPointSet.clear()
+                    }
+                }
+
+                runBlocking {
+                    sendChannel.send(Message(2, groups.map { it.toList() }))
+                }
+            } else {
+                runBlocking {
+                    sendChannel.send(Message(2, testPaths))
                 }
             }
+            println("sending")
+        }
 
-            println(groups.size)
-            val paths = groups.map { ShapeContour.fromPoints(it.toList(), false).toPath3D() }
-
-            runBlocking {
-                sendChannel.send(Message(2, paths))
+        keyboard.keyDown.listen {
+            if (it.key == KEY_SPACEBAR) {
+                orchestrator.plotEvent.trigger(Unit)
             }
         }
 

@@ -1,7 +1,10 @@
 import kotlinx.coroutines.runBlocking
 import lib.Receiver
 import org.openrndr.application
+import org.openrndr.extra.shapes.path3d.toPath3D
 import org.openrndr.launch
+import org.openrndr.shape.ShapeContour
+import kotlin.concurrent.thread
 
 fun main() = application {
 
@@ -21,10 +24,18 @@ fun main() = application {
                         println("tracking")
                     }
                     2 -> {
-                        e.paths.saveOBJasLines("data/obj/circle.obj")
+
+                        val paths = e.paths.map { ShapeContour.fromPoints(it.toList(), false).toPath3D() }
+                        paths.saveOBJasLines("data/obj/circle.obj")
                         println("plotting")
                     }
                 }
+            }
+        }
+
+        thread(isDaemon = true) {
+            while (true) {
+                receiver.work()
             }
         }
 
