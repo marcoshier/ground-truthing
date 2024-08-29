@@ -41,16 +41,16 @@ class Orchestrator: Animatable() {
         }
     var presence = false
 
-    fun updateKinects(k1: Boolean, k2: Boolean) {
-        presence = k1 || k2
+    fun updateKinect(k1: Boolean) {
+        presence = k1
 
         if (currentStage != Stage.PLOTTING) {
             timeSinceTracked = System.currentTimeMillis() - presenceTimeStamp
         }
     }
 
-    fun update(k1: Boolean, k2: Boolean) {
-        updateKinects(k1, k2)
+    fun update(k1: Boolean) {
+        updateKinect(k1)
 
         when(currentStage) {
             Stage.IDLE -> {

@@ -28,7 +28,7 @@ fun main() = application {
         val orchestrator = Orchestrator()
 
         val sendChannel = Channel<Message>(10000)
-        val ipAddress = "169.254.130.90"
+        val ipAddress = "192.168.1.5"
 
         val testPaths = (0..10).map { drawer.bounds.uniform() }.associate { System.currentTimeMillis() to listOf(it.x, it.y) }
 
@@ -59,7 +59,7 @@ fun main() = application {
             }
         }
 
-
+        var tracking = false
 
         orchestrator.idleEvent.listen {
             positions.clear()
@@ -69,10 +69,12 @@ fun main() = application {
         }
 
         orchestrator.trackEvent.listen {
+            tracking = true
             startTimeStamp = System.currentTimeMillis()
         }
 
         orchestrator.plotEvent.listen {
+            tracking = false
             if (!test) {
                 val currentPointSet = mutableMapOf<Long, Vector2>()
 
@@ -105,12 +107,15 @@ fun main() = application {
 
 
         extend {
-            kinect.videoTexture.update(kinect.colorWidth, kinect.colorHeight, kinect.colorFrame)
+            if (tracking) {
+                kinect.videoTexture.update(kinect.colorWidth, kinect.colorHeight, kinect.colorFrame)
 
-            kinect.skeletons.filterNotNull().filter { it.isTracked }.forEach {
-                val t = System.currentTimeMillis() - startTimeStamp
-                positions[t] = it.get3DJoint(Skeleton.SPINE_MID).toVector2()
+                kinect.skeletons.filterNotNull().filter { it.isTracked }.forEach {
+                    val t = System.currentTimeMillis() - startTimeStamp
+                    positions[t] = it.get3DJoint(Skeleton.SPINE_MID).toVector2()
+                }
             }
+
 
         }
     }
