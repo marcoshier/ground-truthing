@@ -6,11 +6,7 @@ import lib.Kinect
 import org.openrndr.KEY_SPACEBAR
 import org.openrndr.application
 import org.openrndr.extra.noise.uniform
-import org.openrndr.extra.shapes.path3d.toPath3D
 import org.openrndr.math.Vector2
-import org.openrndr.math.map
-import org.openrndr.shape.Path3D
-import org.openrndr.shape.ShapeContour
 import java.io.ByteArrayOutputStream
 import java.io.ObjectOutputStream
 import java.io.Serializable
@@ -18,11 +14,10 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.util.*
 import kotlin.concurrent.thread
 
 
-data class Message(val i: Int, val paths: List<List<List<Double>>>): Serializable
+data class Message(val i: Int, val points: Map<Long, List<Double>>): Serializable
 
 fun main() = application {
 
@@ -35,9 +30,10 @@ fun main() = application {
         val sendChannel = Channel<Message>(10000)
         val ipAddress = "169.254.130.90"
 
-        val testPaths = listOf((0..10).map { drawer.bounds.uniform() }.map { listOf(it.x, it.y) })
+        val testPaths = (0..10).map { drawer.bounds.uniform() }.associate { System.currentTimeMillis() to listOf(it.x, it.y) }
 
-        val positions = mutableListOf<Vector2>()
+        var startTimeStamp = 0L
+        val positions = mutableMapOf<Long, Vector2>()
 
         thread(isDaemon = true) {
             val socket = DatagramSocket()
@@ -68,32 +64,27 @@ fun main() = application {
         orchestrator.idleEvent.listen {
             positions.clear()
             runBlocking {
-                sendChannel.send(Message(0, listOf()))
+                sendChannel.send(Message(0, mapOf()))
             }
         }
 
         orchestrator.trackEvent.listen {
-            runBlocking {
-                sendChannel.send(Message(1, listOf()))
-            }
+            startTimeStamp = System.currentTimeMillis()
         }
 
         orchestrator.plotEvent.listen {
             if (!test) {
-                val groups = mutableListOf(mutableListOf<Vector2>())
-                val currentPointSet = mutableListOf<Vector2>()
+                val currentPointSet = mutableMapOf<Long, Vector2>()
 
-                for ((i, p) in positions.withIndex()) {
-                    if (i != 0 && p.distanceTo(positions[i - 1]) < 5.0) {
-                        currentPointSet.add(p)
-                    } else {
-                        groups.add(currentPointSet)
-                        currentPointSet.clear()
-                    }
+                var i = 0
+                var last = 0L
+                for ((t, p) in positions) {
+                    currentPointSet[t] = p
                 }
 
                 runBlocking {
-                    sendChannel.send(Message(2, groups.map { it.toList().map { listOf(it.x, it.y) } }))
+                    //it.toList().associate { it.first to listOf(it.second.x, it.second.y)  })
+                    sendChannel.send(Message(2, currentPointSet.mapValues { listOf(it.value.x, it.value.y) }))
                 }
             } else {
                 runBlocking {
@@ -117,7 +108,8 @@ fun main() = application {
             kinect.videoTexture.update(kinect.colorWidth, kinect.colorHeight, kinect.colorFrame)
 
             kinect.skeletons.filterNotNull().filter { it.isTracked }.forEach {
-                positions.add(it.get3DJoint(Skeleton.SPINE_MID).toVector2())
+                val t = System.currentTimeMillis() - startTimeStamp
+                positions[t] = it.get3DJoint(Skeleton.SPINE_MID).toVector2()
             }
 
         }
