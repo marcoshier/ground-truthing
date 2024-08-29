@@ -8,6 +8,7 @@ import org.openrndr.application
 import org.openrndr.extra.noise.uniform
 import org.openrndr.extra.shapes.path3d.toPath3D
 import org.openrndr.math.Vector2
+import org.openrndr.math.map
 import org.openrndr.shape.Path3D
 import org.openrndr.shape.ShapeContour
 import java.io.ByteArrayOutputStream
@@ -20,7 +21,8 @@ import java.net.InetSocketAddress
 import java.util.*
 import kotlin.concurrent.thread
 
-data class Message(val i: Int, val paths: List<List<Vector2>>): Serializable
+
+data class Message(val i: Int, val paths: List<List<List<Double>>>): Serializable
 
 fun main() = application {
 
@@ -33,7 +35,7 @@ fun main() = application {
         val sendChannel = Channel<Message>(10000)
         val ipAddress = "169.254.130.90"
 
-        val testPaths = listOf((0..10).map { drawer.bounds.uniform() })
+        val testPaths = listOf((0..10).map { drawer.bounds.uniform() }.map { listOf(it.x, it.y) })
 
         val positions = mutableListOf<Vector2>()
 
@@ -91,7 +93,7 @@ fun main() = application {
                 }
 
                 runBlocking {
-                    sendChannel.send(Message(2, groups.map { it.toList() }))
+                    sendChannel.send(Message(2, groups.map { it.toList().map { listOf(it.x, it.y) } }))
                 }
             } else {
                 runBlocking {

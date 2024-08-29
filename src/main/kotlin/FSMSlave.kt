@@ -3,6 +3,7 @@ import lib.Receiver
 import org.openrndr.application
 import org.openrndr.extra.shapes.path3d.toPath3D
 import org.openrndr.launch
+import org.openrndr.math.Vector2
 import org.openrndr.shape.ShapeContour
 import kotlin.concurrent.thread
 
@@ -24,8 +25,8 @@ fun main() = application {
                         println("tracking")
                     }
                     2 -> {
-
-                        val paths = e.paths.map { ShapeContour.fromPoints(it.toList(), false).toPath3D() }
+                        val points = e.paths.map { it.map { Vector2(it[0], it[1]) } }
+                        val paths = points.map { ShapeContour.fromPoints(it.toList(), false).toPath3D() }
                         paths.saveOBJasLines("data/obj/circle.obj")
                         println("plotting")
                     }
