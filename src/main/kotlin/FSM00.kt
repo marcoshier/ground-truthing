@@ -1,3 +1,4 @@
+/*
 import classes.Orchestrator
 import lib.Kinect
 import org.openrndr.animatable.Animatable
@@ -22,3 +23,4 @@ fun main() = application {
         }
     }
 }
+*/

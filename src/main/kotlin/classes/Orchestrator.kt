@@ -1,6 +1,7 @@
 package classes
 
 import org.openrndr.animatable.Animatable
+import org.openrndr.events.Event
 
 enum class Stage {
     IDLE,
@@ -10,38 +11,42 @@ enum class Stage {
 
 class Orchestrator: Animatable() {
 
-    val timeBeforeCalling = 5 * 60 * 1000L
+    val idleEvent = Event<Unit>()
+    val trackEvent = Event<Unit>()
+    val plotEvent = Event<Unit>()
+
+    val timeBeforeCalling = 30 * 1000L
     val timeBeforeTracking = 5 * 1000L
     val timeBeforePlotting = 10 * 1000L
     val timeBeforeIdle = 60 * 1000L
 
-    var presenceTimeStamp = System.currentTimeMillis()
-    var plottingTimeStamp = System.currentTimeMillis()
-    var callingTimeStamp = System.currentTimeMillis()
+    var presenceTimeStamp = 0L
+    var plottingTimeStamp = 0L
+    var callingTimeStamp = 0L
 
-    var timeSinceTracked = System.currentTimeMillis()
-    var timeSinceCalling = System.currentTimeMillis()
-    var timeSincePlotting = System.currentTimeMillis()
+    var timeSinceTracked = 0L
+    var timeSinceCalling = 0L
+    var timeSincePlotting = 0L
 
     var currentStage = Stage.IDLE
-    var presence = false
         set(value) {
-            if (!field && value) {
-                presenceTimeStamp = System.currentTimeMillis()
+            if (field != value) {
+                when(value) {
+                    Stage.IDLE -> idleEvent.trigger(Unit)
+                    Stage.TRACKING -> trackEvent.trigger(Unit)
+                    Stage.PLOTTING -> plotEvent.trigger(Unit)
+                }
             }
             field = value
         }
-
+    var presence = false
 
     fun updateKinects(k1: Boolean, k2: Boolean) {
-        if (k1 || k2) {
-            presence = true
-        } else {
-            presence = false
+        presence = k1 || k2
+
+        if (currentStage != Stage.PLOTTING) {
+            timeSinceTracked = System.currentTimeMillis() - presenceTimeStamp
         }
-
-        timeSinceTracked = System.currentTimeMillis() - presenceTimeStamp
-
     }
 
     fun update(k1: Boolean, k2: Boolean) {
@@ -52,6 +57,7 @@ class Orchestrator: Animatable() {
                 // plot idlestate
                 if (presence && timeSinceTracked > timeBeforeTracking) {
                     currentStage = Stage.TRACKING
+                    presenceTimeStamp = System.currentTimeMillis()
                 }
             }
             Stage.TRACKING -> {
@@ -61,7 +67,6 @@ class Orchestrator: Animatable() {
                 }
             }
             Stage.PLOTTING -> {
-                presence = false
                 timeSinceCalling = System.currentTimeMillis() - callingTimeStamp
                 if (timeSinceCalling > timeBeforePlotting) {
                     // plot
